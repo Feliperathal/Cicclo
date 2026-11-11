@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Cicclo.Api/Cicclo.Api.csproj" />
+  <Project Path="Cicclo.Tests/Cicclo.Tests.csproj" />
+</Solution>
