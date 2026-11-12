@@ -1,6 +1,16 @@
 # Desafio Técnico Cicclo
 
-Aplicação Full Stack Mobile que simula parte do funcionamento de uma lavanderia automatizada. O backend permite consultar a carteira e os serviços disponíveis, além de simular a cobrança e a execução de um serviço. O aplicativo mobile ainda não foi implementado.
+Aplicação Full Stack Mobile que simula parte do funcionamento de uma lavanderia automatizada. O backend permite consultar a carteira e os serviços disponíveis, além de simular a cobrança e a execução de um serviço. O aplicativo Expo oferece uma tela única para consultar esses dados e solicitar consumos.
+
+## Funcionalidades implementadas
+
+- Consulta do saldo da conta fixa de identificador `1`.
+- Catálogo dinâmico dos serviços disponíveis.
+- Consumo de Lavagem e Secagem com preço controlado pelo backend.
+- Débito atômico e seguro para requisições concorrentes.
+- Respostas padronizadas com `ProblemDetails` e `ValidationProblemDetails`.
+- Aplicativo Android via Expo Go com estados de carregamento, sucesso, erro, lista vazia e servidor indisponível.
+- Proteção mobile contra envios duplicados e sincronização do saldo após consumo.
 
 ## Tecnologias
 
@@ -37,10 +47,22 @@ Cicclo/
 └── README.md
 ```
 
+## Arquitetura
+
+- `Cicclo.Api/Controllers`: recebe parâmetros HTTP, chama os serviços e converte resultados em DTOs.
+- `Cicclo.Api/DTOs`: define os contratos externos da API sem expor diretamente o domínio.
+- `Cicclo.Api/Models`: representa carteira, serviços e resultados das operações.
+- `Cicclo.Api/Services`: contém o catálogo, a carteira e a orquestração do consumo.
+- `Cicclo.Tests`: reúne testes unitários, integração HTTP e concorrência.
+- `mobile/src/services`: centraliza URL, requisições e conversão de erros HTTP.
+- `mobile/src/components`: apresenta carteira e serviços sem conter regras de negócio.
+
+`WalletService` é Singleton e mantém a carteira em memória durante a execução da API. Todas as leituras e o débito usam o mesmo objeto `lock` privado. A validação do saldo e sua alteração acontecem dentro de uma única seção crítica, impedindo saldo negativo em consumos simultâneos.
+
 ## Requisitos
 
 - .NET SDK 10.0 ou superior compatível com `net10.0`.
-- Node.js LTS 22.13 ou superior. O projeto foi validado com Node.js 26.13.0 LTS.
+- Node.js LTS 22.13 ou superior. O projeto foi validado com Node.js 26.13.1 LTS.
 - npm, instalado junto com o Node.js.
 - Expo Go em um dispositivo ou um emulador Android configurado.
 
@@ -55,11 +77,25 @@ dotnet test backend/Cicclo.slnx --no-build
 dotnet run --project backend/Cicclo.Api
 ```
 
+O comando acima atende acessos feitos no próprio computador e no emulador Android. Para acessar a API pelo Expo Go em um dispositivo físico, mantenha o celular e o computador na mesma rede e inicie o backend aceitando conexões nas interfaces de rede:
+
+```powershell
+dotnet run --project backend/Cicclo.Api --urls "http://0.0.0.0:5046"
+```
+
 Pelos perfis atuais, a API utiliza `https://localhost:7219` e `http://localhost:5046`. Com o ambiente `Development`, o documento OpenAPI está disponível em:
 
 ```text
 https://localhost:7219/openapi/v1.json
 ```
+
+### Testes do backend
+
+```powershell
+dotnet test backend/Cicclo.slnx
+```
+
+A suíte possui 41 testes que cobrem domínio, contratos HTTP, validação, preservação do saldo e concorrência nos níveis de serviço e API.
 
 ## Executar o aplicativo mobile
 
@@ -78,6 +114,14 @@ O backend deve permanecer em execução enquanto o aplicativo é utilizado.
    EXPO_PUBLIC_API_URL=http://10.0.2.2:5046
    ```
 
+   Para um dispositivo físico, use o IPv4 local do computador, que pode ser consultado com `ipconfig`:
+
+   ```env
+   EXPO_PUBLIC_API_URL=http://192.168.x.x:5046
+   ```
+
+   Nesse cenário, execute o backend com `--urls "http://0.0.0.0:5046"`. Não use `localhost`, `127.0.0.1` ou `10.0.2.2` no dispositivo físico.
+
 3. Inicie o Expo:
 
    ```powershell
@@ -85,6 +129,12 @@ O backend deve permanecer em execução enquanto o aplicativo é utilizado.
    ```
 
 4. Abra pelo Expo Go ou pressione `a` para utilizar um emulador Android disponível.
+
+Depois de alterar o `.env`, reinicie o Expo para que a variável seja incorporada novamente ao bundle:
+
+```powershell
+npx expo start --clear
+```
 
 No emulador Android, use normalmente `http://10.0.2.2:5046`. Se a rede local ou o firewall bloquear esse caminho, é possível criar um túnel de desenvolvimento com ADB:
 
@@ -99,10 +149,12 @@ Comandos adicionais:
 ```powershell
 npm run typecheck
 npx expo install --check
-npx expo-doctor
+npm run doctor
 ```
 
 Não foi gerado APK nesta etapa.
+
+O `npm audit` atualmente reporta três ocorrências moderadas do mesmo problema transitivo em `minimatch`, trazido por `@expo/fingerprint`/Expo. A correção automática com `--force` rebaixa o Expo para o SDK 52 e, por isso, não deve ser aplicada sem uma atualização compatível do ecossistema.
 
 ## Endpoints
 
@@ -189,13 +241,15 @@ Exemplo de saldo insuficiente:
 ## Decisões técnicas
 
 - `WalletService` é Singleton para conservar o saldo durante toda a execução da única instância da API.
-- Não há banco de dados porque o desafio exige armazenamento efêmero em memória.
+- Optou-se pelo armazenamento em memória utilizando um serviço Singleton, considerando o escopo reduzido, a existência de uma única conta e o prazo do desafio. Essa abordagem elimina a necessidade de infraestrutura adicional, mantendo as regras de negócio testáveis. Como limitação, os dados são perdidos ao reiniciar a API e não são compartilhados entre múltiplas instâncias.
+- Não há autenticação porque o escopo define uma única conta fixa e não inclui cadastro ou identidade de usuários.
 - A verificação e o débito usam a mesma seção crítica com um objeto `lock` privado. Assim, requisições simultâneas não conseguem debitar além do saldo disponível.
 - Os preços pertencem exclusivamente ao catálogo do backend. O cliente envia apenas o identificador do serviço e não controla o valor cobrado.
 - Os testes priorizam regras monetárias, rejeições sem alteração do saldo, contratos HTTP, isolamento da carteira e concorrência nos níveis de serviço e HTTP.
 - O mobile usa `fetch`, estado nativo do React e uma única tela; não há necessidade de Axios, navegação ou biblioteca global de estado.
 - O saldo retornado pelo backend é a fonte da verdade. O aplicativo nunca calcula o débito localmente.
 - Uma trava síncrona com `useRef` impede POSTs duplicados enquanto um consumo está em andamento.
+- A interface possui uma única tela porque todo o fluxo cabe no mesmo contexto e não exige navegação.
 
 ## Integração com React Native e Expo
 
@@ -212,7 +266,7 @@ Exemplo de saldo insuficiente:
 - Certificados HTTPS locais normalmente não são confiáveis em dispositivos e emuladores. Para HTTPS, instale e confie explicitamente em um certificado de desenvolvimento apropriado; nunca desative globalmente a validação de certificados.
 - React Native nativo e Expo Go não dependem da política CORS do navegador. Por isso, CORS irrestrito não está habilitado. Caso uma versão web seja criada, configure apenas as origens web explícitas necessárias.
 
-## Regras e limitações
+## Regras e limitações conhecidas
 
 - A única conta disponível possui identificador `1` e saldo inicial de R$ 50,00.
 - Lavagem custa R$ 18,90 e secagem custa R$ 20,90.
@@ -226,3 +280,27 @@ Exemplo de saldo insuficiente:
 - Não existe persistência de transações; o identificador retornado representa somente o consumo atual.
 - Em caso de perda da resposta do POST, o aplicativo atualiza a carteira, mas não repete automaticamente o consumo. Sem idempotência ou histórico, não é possível confirmar pelo mobile qual transação foi processada.
 - O aplicativo exige acesso de rede ao backend e não possui modo offline.
+
+## Uso de Inteligência Artificial
+
+Ferramentas de inteligência artificial foram utilizadas como apoio ao desenvolvimento para:
+
+- planejar e organizar as etapas incrementais;
+- sugerir implementações e estruturas de código;
+- revisar regras de negócio e contratos HTTP;
+- elaborar e ampliar testes unitários, HTTP e de concorrência;
+- apoiar a documentação e as instruções de execução;
+- auxiliar a investigação de erros observados durante build, testes e validação no emulador.
+
+As decisões técnicas, o código entregue e os resultados das validações foram revisados pelo responsável pelo projeto.
+
+## Melhorias futuras
+
+Possibilidades fora do escopo desta entrega:
+
+- persistência de saldo, consumos e transações;
+- autenticação e suporte a múltiplas contas;
+- idempotência para operações de consumo;
+- histórico de consumos no aplicativo;
+- integração com equipamentos físicos da lavanderia;
+- testes end-to-end automatizados no aplicativo mobile.
