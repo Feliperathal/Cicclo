@@ -6,6 +6,7 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<IWalletService, WalletService>();
 builder.Services.AddSingleton<ILaundryServiceCatalog, LaundryServiceCatalog>();
+builder.Services.AddScoped<ILaundryConsumptionService, LaundryConsumptionService>();
 
 var app = builder.Build();
 

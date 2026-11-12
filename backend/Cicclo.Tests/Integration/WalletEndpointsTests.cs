@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using Cicclo.Api.DTOs;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Cicclo.Tests.Integration;
 
@@ -10,8 +9,8 @@ public sealed class WalletEndpointsTests
     [Fact]
     public async Task GetWallet_ForExistingAccount_ReturnsWallet()
     {
-        await using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await using var factory = new CiccloWebApplicationFactory();
+        using var client = factory.CreateHttpsClient();
 
         var response = await client.GetAsync("/api/wallet/1");
         var wallet = await response.Content.ReadFromJsonAsync<WalletResponse>();
@@ -25,8 +24,8 @@ public sealed class WalletEndpointsTests
     [Fact]
     public async Task GetWallet_ForUnknownAccount_ReturnsNotFound()
     {
-        await using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await using var factory = new CiccloWebApplicationFactory();
+        using var client = factory.CreateHttpsClient();
 
         var response = await client.GetAsync("/api/wallet/999");
 
@@ -38,8 +37,8 @@ public sealed class WalletEndpointsTests
     [InlineData("invalid")]
     public async Task GetWallet_WithInvalidAccountId_ReturnsBadRequest(string accountId)
     {
-        await using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await using var factory = new CiccloWebApplicationFactory();
+        using var client = factory.CreateHttpsClient();
 
         var response = await client.GetAsync($"/api/wallet/{accountId}");
 
@@ -50,8 +49,8 @@ public sealed class WalletEndpointsTests
     [InlineData("2")]
     public async Task GetWallet_WithNotFoundAccountId_ReturnsNotFound(string accountId)
     {
-        await using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await using var factory = new CiccloWebApplicationFactory();
+        using var client = factory.CreateHttpsClient();
 
         var response = await client.GetAsync($"/api/wallet/{accountId}");
 

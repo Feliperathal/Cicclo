@@ -9,4 +9,6 @@ public interface IWalletService
     decimal? GetBalance(int accountId);
 
     bool AccountExists(int accountId);
+
+    DebitResult TryDebit(int accountId, decimal amount);
 }

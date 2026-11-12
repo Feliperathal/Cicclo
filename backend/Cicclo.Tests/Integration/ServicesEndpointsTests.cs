@@ -4,7 +4,6 @@ using Cicclo.Api.DTOs;
 using Cicclo.Api.Models;
 using Cicclo.Api.Services;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -16,8 +15,8 @@ public sealed class ServicesEndpointsTests
     [Fact]
     public async Task GetServices_ReturnsConfiguredServices()
     {
-        await using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        await using var factory = new CiccloWebApplicationFactory();
+        using var client = factory.CreateHttpsClient();
 
         var response = await client.GetAsync("/api/services");
         var services = await response.Content.ReadFromJsonAsync<LaundryServiceResponse[]>();
@@ -44,7 +43,7 @@ public sealed class ServicesEndpointsTests
     public async Task GetServices_WhenCatalogIsEmpty_ReturnsEmptyCollection()
     {
         await using var factory = new EmptyCatalogApplicationFactory();
-        using var client = factory.CreateClient();
+        using var client = factory.CreateHttpsClient();
 
         var response = await client.GetAsync("/api/services");
         var services = await response.Content.ReadFromJsonAsync<LaundryServiceResponse[]>();
@@ -54,10 +53,11 @@ public sealed class ServicesEndpointsTests
         Assert.Empty(services);
     }
 
-    private sealed class EmptyCatalogApplicationFactory : WebApplicationFactory<Program>
+    private sealed class EmptyCatalogApplicationFactory : CiccloWebApplicationFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            base.ConfigureWebHost(builder);
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<ILaundryServiceCatalog>();

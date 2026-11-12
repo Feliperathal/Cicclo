@@ -37,4 +37,34 @@ public sealed class WalletService : IWalletService
             return _wallets.Exists(wallet => wallet.AccountId == accountId);
         }
     }
+
+    public DebitResult TryDebit(int accountId, decimal amount)
+    {
+        lock (_syncRoot)
+        {
+            var walletIndex = _wallets.FindIndex(wallet => wallet.AccountId == accountId);
+
+            if (walletIndex < 0)
+            {
+                return new DebitResult(DebitStatus.AccountNotFound, null);
+            }
+
+            var wallet = _wallets[walletIndex];
+
+            if (amount <= 0)
+            {
+                return new DebitResult(DebitStatus.InvalidAmount, wallet.Balance);
+            }
+
+            if (wallet.Balance < amount)
+            {
+                return new DebitResult(DebitStatus.InsufficientBalance, wallet.Balance);
+            }
+
+            var remainingBalance = wallet.Balance - amount;
+            _wallets[walletIndex] = new Wallet(wallet.AccountId, remainingBalance);
+
+            return new DebitResult(DebitStatus.Completed, remainingBalance);
+        }
+    }
 }
