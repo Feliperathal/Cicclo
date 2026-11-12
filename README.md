@@ -66,10 +66,22 @@ A URL ativa segue a prioridade: valor salvo pelo usuário no AsyncStorage, `EXPO
 
 ## Requisitos
 
-- .NET SDK 10.0 ou superior compatível com `net10.0`.
+### Backend
+
+- .NET SDK 10.0 ou superior compatível com `net10.0` para executar a API com `dotnet run`.
+- Computador acessível pela rede utilizada pelo dispositivo Android.
+
+### Desenvolvimento mobile
+
 - Node.js LTS 22.13 ou superior. O projeto foi validado com Node.js 26.13.1 LTS.
 - npm, instalado junto com o Node.js.
-- Expo Go em um dispositivo ou um emulador Android configurado.
+- Expo Go ou emulador Android para desenvolvimento e depuração.
+
+### Utilização do APK
+
+- Dispositivo Android compatível e o APK instalado.
+- Backend em execução e acessível pelo dispositivo.
+- Expo Go e Node.js não são necessários no celular para executar o APK.
 
 ## Executar o backend
 
@@ -174,13 +186,58 @@ mobile/dist/Cicclo-1.0.0.apk
 
 O artefato local é ignorado pelo Git. Ele foi validado no emulador Android, possui assinatura APK v2 de desenvolvimento e é adequado para instalação e avaliação local. Essa assinatura não deve ser utilizada para publicação na Play Store.
 
+Como `mobile/dist` está ignorado pelo Git, o APK não estará presente após um novo clone do repositório. A distribuição pública deverá ser feita por uma GitHub Release `v1.0.0`. O link de download será incluído aqui somente depois que a release for efetivamente publicada.
+
 Para instalar com ADB:
 
 ```powershell
 adb install -r mobile/dist/Cicclo-1.0.0.apk
 ```
 
+#### Instalação sem ADB
+
+1. Baixe o arquivo `Cicclo-1.0.0.apk` pela GitHub Release quando ela estiver disponível.
+2. Transfira o arquivo para o dispositivo Android, caso o download tenha sido feito em outro equipamento.
+3. Abra o APK no Android.
+4. Autorize a instalação por essa fonte quando o sistema solicitar.
+5. Conclua a instalação e abra o aplicativo Cicclo.
+
+Os nomes das opções podem variar conforme a versão e o fabricante do Android. O APK utiliza assinatura de desenvolvimento e destina-se à avaliação local, não à publicação na Play Store.
+
+#### Fluxo recomendado para avaliação
+
+1. Clone o repositório no computador.
+2. Descubra o IPv4 local com `ipconfig`.
+3. Inicie o backend com `dotnet run --project backend/Cicclo.Api --urls "http://0.0.0.0:5046"`.
+4. Permita conexões de entrada TCP na porta `5046` no firewall da rede privada, se necessário.
+5. Instale e abra o APK.
+6. Abra a engrenagem de configuração e informe `http://IP_DO_COMPUTADOR:5046`.
+7. Use **Testar conexão** e depois **Salvar**.
+8. Consulte a carteira e utilize os serviços.
+
+O aplicativo não precisa ser recompilado quando esse endereço mudar. Celular e computador precisam ter conectividade IP entre si, mas não necessariamente estar na mesma rede Wi-Fi; redes roteadas, VPNs ou conexões equivalentes também podem funcionar quando a porta estiver acessível.
+
 O Android permite tráfego HTTP nesse APK para demonstração em uma rede local confiável. A validação de certificados HTTPS permanece ativa.
+
+## Validação da entrega
+
+Validações executadas em 12 de novembro de 2026:
+
+- backend restaurado e compilado sem erros ou warnings;
+- 41 testes xUnit aprovados;
+- TypeScript aprovado;
+- 13 testes Vitest de URL e prioridade da configuração aprovados;
+- Expo Doctor com 20/20 verificações e dependências compatíveis;
+- assinatura APK v2 verificada;
+- APK instalado e aberto no emulador sem Expo Go ou Metro;
+- configuração de `http://10.0.2.2:5046`, teste de conexão e persistência aprovados;
+- Lavagem debitou R$ 18,90 e atualizou o saldo para R$ 31,10;
+- Secagem debitou R$ 20,90 e atualizou o saldo para R$ 10,20;
+- nova Secagem retornou saldo insuficiente e preservou R$ 10,20;
+- configuração permaneceu salva após encerramento completo;
+- backend indisponível apresentou erro compreensível sem encerrar o app, e os dados foram recuperados após reiniciar a API.
+
+Os cenários visuais foram automatizados com ADB no emulador Android. A instalação manual por gerenciador de arquivos e a execução em diferentes fabricantes/versões reais do Android não foram repetidas nesta validação final.
 
 O `npm audit` atualmente reporta três ocorrências moderadas do mesmo problema transitivo em `minimatch`, trazido por `@expo/fingerprint`/Expo. A correção automática com `--force` rebaixa o Expo para o SDK 52 e, por isso, não deve ser aplicada sem uma atualização compatível do ecossistema.
 
