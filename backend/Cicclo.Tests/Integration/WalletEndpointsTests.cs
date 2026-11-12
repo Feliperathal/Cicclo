@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Cicclo.Api.DTOs;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Cicclo.Tests.Integration;
 
@@ -28,12 +29,15 @@ public sealed class WalletEndpointsTests
         using var client = factory.CreateHttpsClient();
 
         var response = await client.GetAsync("/api/wallet/999");
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("AccountNotFound", problem?.Title);
     }
 
     [Theory]
     [InlineData("0")]
+    [InlineData("-1")]
     [InlineData("invalid")]
     public async Task GetWallet_WithInvalidAccountId_ReturnsBadRequest(string accountId)
     {

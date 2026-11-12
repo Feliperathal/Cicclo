@@ -66,6 +66,18 @@ public sealed class WalletServiceTests
     }
 
     [Fact]
+    public void TryDebit_WhenBalanceEqualsAmount_CompletesWithZeroBalance()
+    {
+        var service = new WalletService();
+
+        var result = service.TryDebit(1, 50.00m);
+
+        Assert.Equal(DebitStatus.Completed, result.Status);
+        Assert.Equal(0.00m, result.RemainingBalance);
+        Assert.Equal(0.00m, service.GetBalance(1));
+    }
+
+    [Fact]
     public async Task TryDebit_Concurrently_NeverOverdrawsWallet()
     {
         var service = new WalletService();

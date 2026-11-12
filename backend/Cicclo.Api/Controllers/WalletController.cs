@@ -12,7 +12,7 @@ public sealed class WalletController(IWalletService walletService) : ControllerB
     [HttpGet("{accountId}")]
     [ProducesResponseType<WalletResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public ActionResult<WalletResponse> GetByAccountId(
         [FromRoute, Range(1, int.MaxValue)] int accountId)
     {
@@ -20,7 +20,10 @@ public sealed class WalletController(IWalletService walletService) : ControllerB
 
         if (wallet is null)
         {
-            return NotFound();
+            return Problem(
+                statusCode: StatusCodes.Status404NotFound,
+                title: "AccountNotFound",
+                detail: "Conta não encontrada.");
         }
 
         return Ok(new WalletResponse(wallet.AccountId, wallet.Balance));

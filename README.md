@@ -45,9 +45,19 @@ dotnet test backend/Cicclo.slnx --no-build
 dotnet run --project backend/Cicclo.Api
 ```
 
-Com o ambiente `Development`, o documento OpenAPI estará disponível em `/openapi/v1.json`.
+Pelos perfis atuais, a API utiliza `https://localhost:7219` e `http://localhost:5046`. Com o ambiente `Development`, o documento OpenAPI está disponível em:
+
+```text
+https://localhost:7219/openapi/v1.json
+```
 
 ## Endpoints
+
+| Método | Rota | Sucesso | Erros possíveis |
+|---|---|---|---|
+| GET | `/api/wallet/{accountId}` | 200 | 400, 404 |
+| GET | `/api/services` | 200 | — |
+| POST | `/api/services/consume` | 200 | 400, 404, 409 |
 
 ### Consultar carteira
 
@@ -55,10 +65,32 @@ Com o ambiente `Development`, o documento OpenAPI estará disponível em `/opena
 GET /api/wallet/1
 ```
 
+```json
+{
+  "accountId": 1,
+  "balance": 50.00
+}
+```
+
 ### Listar serviços
 
 ```http
 GET /api/services
+```
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Lavagem",
+    "price": 18.90
+  },
+  {
+    "id": 2,
+    "name": "Secagem",
+    "price": 20.90
+  }
+]
 ```
 
 ### Consumir serviço
@@ -87,11 +119,42 @@ Exemplo de resposta `200 OK`:
 
 Possíveis respostas de erro:
 
-- `400 Bad Request`: corpo da requisição inválido.
-- `404 Not Found`: conta ou serviço inexistente.
-- `409 Conflict`: saldo insuficiente.
+- `400 Bad Request`: parâmetros, corpo ou JSON inválidos; retorna `ValidationProblemDetails` nativo do ASP.NET Core.
+- `404 Not Found`: conta ou serviço inexistente; retorna `ProblemDetails`.
+- `409 Conflict`: saldo insuficiente; retorna `ProblemDetails`.
 
-Os erros de negócio retornam os campos `error` e `message`.
+Exemplo de saldo insuficiente:
+
+```json
+{
+  "title": "InsufficientBalance",
+  "status": 409,
+  "detail": "Saldo insuficiente para consumir o serviço."
+}
+```
+
+## Decisões técnicas
+
+- `WalletService` é Singleton para conservar o saldo durante toda a execução da única instância da API.
+- Não há banco de dados porque o desafio exige armazenamento efêmero em memória.
+- A verificação e o débito usam a mesma seção crítica com um objeto `lock` privado. Assim, requisições simultâneas não conseguem debitar além do saldo disponível.
+- Os preços pertencem exclusivamente ao catálogo do backend. O cliente envia apenas o identificador do serviço e não controla o valor cobrado.
+- Os testes priorizam regras monetárias, rejeições sem alteração do saldo, contratos HTTP, isolamento da carteira e concorrência nos níveis de serviço e HTTP.
+
+## Integração com React Native e Expo
+
+- Emulador Android padrão: use `http://10.0.2.2:5046` para alcançar a porta HTTP do computador. Dentro do Android, `localhost` representa o próprio emulador, não o computador.
+- Dispositivo físico ou Expo Go: use o IP local do computador, por exemplo `http://192.168.x.x:5046`, com ambos os dispositivos na mesma rede.
+- Para aceitar conexões de um dispositivo físico, inicie explicitamente o backend na interface necessária durante o desenvolvimento, por exemplo:
+
+  ```powershell
+  dotnet run --project backend/Cicclo.Api --urls "http://0.0.0.0:5046"
+  ```
+
+- Não fixe o IP da máquina no backend. Configure a URL base no aplicativo mobile conforme o ambiente.
+- O firewall deve permitir conexões de entrada na porta escolhida. Não exponha essa configuração diretamente à internet.
+- Certificados HTTPS locais normalmente não são confiáveis em dispositivos e emuladores. Para HTTPS, instale e confie explicitamente em um certificado de desenvolvimento apropriado; nunca desative globalmente a validação de certificados.
+- React Native nativo e Expo Go não dependem da política CORS do navegador. Por isso, CORS irrestrito não está habilitado. Caso uma versão web seja criada, configure apenas as origens web explícitas necessárias.
 
 ## Regras e limitações
 
@@ -103,3 +166,5 @@ Os erros de negócio retornam os campos `error` e `message`.
 - O consumo representa apenas uma simulação de cobrança e execução do serviço; não existe integração com equipamentos físicos.
 - Não há idempotência: requisições de consumo repetidas representam cobranças independentes.
 - A carteira é armazenada em memória, sem banco de dados, e volta ao saldo inicial quando a API é reiniciada.
+- Não há autenticação e apenas a conta de identificador `1` existe.
+- Não existe persistência de transações; o identificador retornado representa somente o consumo atual.

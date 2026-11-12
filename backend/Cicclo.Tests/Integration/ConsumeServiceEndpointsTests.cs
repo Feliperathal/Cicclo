@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using Cicclo.Api.DTOs;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Cicclo.Tests.Integration;
 
@@ -38,10 +40,10 @@ public sealed class ConsumeServiceEndpointsTests
         var response = await client.PostAsJsonAsync(
             "/api/services/consume",
             new ConsumeServiceRequest(999, 1));
-        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal("AccountNotFound", error?.Error);
+        Assert.Equal("AccountNotFound", problem?.Title);
     }
 
     [Fact]
@@ -53,10 +55,10 @@ public sealed class ConsumeServiceEndpointsTests
         var response = await client.PostAsJsonAsync(
             "/api/services/consume",
             new ConsumeServiceRequest(1, 999));
-        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal("ServiceNotFound", error?.Error);
+        Assert.Equal("ServiceNotFound", problem?.Title);
     }
 
     [Fact]
@@ -69,19 +71,21 @@ public sealed class ConsumeServiceEndpointsTests
         await client.PostAsJsonAsync("/api/services/consume", request);
 
         var response = await client.PostAsJsonAsync("/api/services/consume", request);
-        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
         var wallet = await client.GetFromJsonAsync<WalletResponse>("/api/wallet/1");
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Equal("InsufficientBalance", error?.Error);
-        Assert.Equal("Saldo insuficiente para consumir o serviço.", error?.Message);
+        Assert.Equal("InsufficientBalance", problem?.Title);
+        Assert.Equal("Saldo insuficiente para consumir o serviço.", problem?.Detail);
         Assert.NotNull(wallet);
         Assert.Equal(8.20m, wallet.Balance);
     }
 
     [Theory]
     [InlineData(0, 1)]
+    [InlineData(-1, 1)]
     [InlineData(1, 0)]
+    [InlineData(1, -1)]
     public async Task Consume_InvalidRequest_ReturnsBadRequest(int accountId, int serviceId)
     {
         await using var factory = new CiccloWebApplicationFactory();
@@ -92,5 +96,57 @@ public sealed class ConsumeServiceEndpointsTests
             new ConsumeServiceRequest(accountId, serviceId));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("{")]
+    [InlineData("{\"accountId\":\"invalid\",\"serviceId\":1}")]
+    [InlineData("null")]
+    [InlineData("{}")]
+    public async Task Consume_WithStructurallyInvalidJson_ReturnsBadRequest(string json)
+    {
+        await using var factory = new CiccloWebApplicationFactory();
+        using var client = factory.CreateHttpsClient();
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync("/api/services/consume", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Consume_WithoutBody_ReturnsBadRequest()
+    {
+        await using var factory = new CiccloWebApplicationFactory();
+        using var client = factory.CreateHttpsClient();
+        using var content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync("/api/services/consume", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Consume_Concurrently_AllowsOnlyAffordableRequests()
+    {
+        await using var factory = new CiccloWebApplicationFactory();
+        using var client = factory.CreateHttpsClient();
+
+        var attempts = Enumerable.Range(0, 10)
+            .Select(_ => client.PostAsJsonAsync(
+                "/api/services/consume",
+                new ConsumeServiceRequest(1, 2)));
+        var responses = await Task.WhenAll(attempts);
+        var wallet = await client.GetFromJsonAsync<WalletResponse>("/api/wallet/1");
+
+        Assert.Equal(2, responses.Count(response => response.StatusCode == HttpStatusCode.OK));
+        Assert.Equal(8, responses.Count(response => response.StatusCode == HttpStatusCode.Conflict));
+        Assert.NotNull(wallet);
+        Assert.Equal(8.20m, wallet.Balance);
+
+        foreach (var response in responses)
+        {
+            response.Dispose();
+        }
     }
 }

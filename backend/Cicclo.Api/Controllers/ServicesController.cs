@@ -25,8 +25,8 @@ public sealed class ServicesController(
     [HttpPost("consume")]
     [ProducesResponseType<ConsumeServiceResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
-    [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public ActionResult<ConsumeServiceResponse> Consume([FromBody] ConsumeServiceRequest request)
     {
         var result = consumptionService.Consume(request.AccountId, request.ServiceId);
@@ -40,17 +40,20 @@ public sealed class ServicesController(
                 result.RemainingBalance!.Value,
                 "Completed")),
 
-            ConsumptionStatus.AccountNotFound => NotFound(new ErrorResponse(
-                "AccountNotFound",
-                "Conta não encontrada.")),
+            ConsumptionStatus.AccountNotFound => Problem(
+                statusCode: StatusCodes.Status404NotFound,
+                title: "AccountNotFound",
+                detail: "Conta não encontrada."),
 
-            ConsumptionStatus.ServiceNotFound => NotFound(new ErrorResponse(
-                "ServiceNotFound",
-                "Serviço não encontrado.")),
+            ConsumptionStatus.ServiceNotFound => Problem(
+                statusCode: StatusCodes.Status404NotFound,
+                title: "ServiceNotFound",
+                detail: "Serviço não encontrado."),
 
-            ConsumptionStatus.InsufficientBalance => Conflict(new ErrorResponse(
-                "InsufficientBalance",
-                "Saldo insuficiente para consumir o serviço.")),
+            ConsumptionStatus.InsufficientBalance => Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "InsufficientBalance",
+                detail: "Saldo insuficiente para consumir o serviço."),
             _ => throw new InvalidOperationException("Unknown consumption status.")
         };
     }
