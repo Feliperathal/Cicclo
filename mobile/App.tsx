@@ -8,6 +8,7 @@ import { ServiceCard } from './src/components/ServiceCard';
 import { WalletCard } from './src/components/WalletCard';
 import { ApiConnectionError, ApiError, consumeLaundryService, getLaundryServices, getWallet } from './src/services/api';
 import { loadApiConfig, saveApiUrl } from './src/services/apiConfig';
+import { hasApiUrlChanged } from './src/services/apiUrl';
 import type { LaundryServiceResponse } from './src/types/api';
 import { formatCurrency } from './src/utils/currency';
 
@@ -87,7 +88,14 @@ export default function App() {
   }, [apiUrl, configLoading, loadServices, loadWallet]);
 
   const handleSaveServer = useCallback(async (value: string) => {
+    const serverChanged = hasApiUrlChanged(apiUrl, value);
     const normalizedUrl = await saveApiUrl(value);
+
+    if (!serverChanged) {
+      setConfigVisible(false);
+      return;
+    }
+
     serverGeneration.current += 1;
     setBalance(null);
     setServices(null);
@@ -98,7 +106,7 @@ export default function App() {
     setServicesLoading(false);
     setApiUrl(normalizedUrl);
     setConfigVisible(false);
-  }, []);
+  }, [apiUrl]);
 
   const handleOpenConfig = () => {
     if (consumeLock.current) {

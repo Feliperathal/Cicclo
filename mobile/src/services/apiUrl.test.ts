@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ApiUrlValidationError, normalizeApiUrl, resolveApiUrl } from './apiUrl';
+import { ApiUrlValidationError, hasApiUrlChanged, normalizeApiUrl, resolveApiUrl } from './apiUrl';
 
 describe('normalizeApiUrl', () => {
   it.each([
@@ -35,5 +35,15 @@ describe('resolveApiUrl', () => {
 
   it('retorna null quando nenhuma URL válida existe', () => {
     expect(resolveApiUrl('invalid', undefined)).toBeNull();
+  });
+});
+
+describe('hasApiUrlChanged', () => {
+  it('não considera barras finais e espaços como mudança de servidor', () => {
+    expect(hasApiUrlChanged('http://server.local:5046', ' http://server.local:5046/ ')).toBe(false);
+  });
+
+  it('identifica uma mudança real de servidor', () => {
+    expect(hasApiUrlChanged('http://server.local:5046', 'http://other.local:5046')).toBe(true);
   });
 });

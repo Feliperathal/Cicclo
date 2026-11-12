@@ -42,3 +42,7 @@ export function resolveApiUrl(savedUrl: string | null, defaultUrl: string | unde
   }
   return null;
 }
+
+export function hasApiUrlChanged(currentUrl: string | null, nextUrl: string): boolean {
+  return currentUrl !== normalizeApiUrl(nextUrl);
+}

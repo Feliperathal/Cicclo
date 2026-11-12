@@ -226,7 +226,7 @@ Validações executadas em 12 de novembro de 2026:
 - backend restaurado e compilado sem erros ou warnings;
 - 41 testes xUnit aprovados;
 - TypeScript aprovado;
-- 13 testes Vitest de URL e prioridade da configuração aprovados;
+- 15 testes Vitest de URL, prioridade e equivalência da configuração aprovados;
 - Expo Doctor com 20/20 verificações e dependências compatíveis;
 - assinatura APK v2 verificada;
 - APK instalado e aberto no emulador sem Expo Go ou Metro;
@@ -235,6 +235,7 @@ Validações executadas em 12 de novembro de 2026:
 - Secagem debitou R$ 20,90 e atualizou o saldo para R$ 10,20;
 - nova Secagem retornou saldo insuficiente e preservou R$ 10,20;
 - configuração permaneceu salva após encerramento completo;
+- salvar novamente a mesma URL preservou o saldo e o catálogo já carregados;
 - backend indisponível apresentou erro compreensível sem encerrar o app, e os dados foram recuperados após reiniciar a API.
 
 Os cenários visuais foram automatizados com ADB no emulador Android. A instalação manual por gerenciador de arquivos e a execução em diferentes fabricantes/versões reais do Android não foram repetidas nesta validação final.
