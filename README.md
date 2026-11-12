@@ -9,8 +9,9 @@ Aplicação Full Stack Mobile que simula parte do funcionamento de uma lavanderi
 - Consumo de Lavagem e Secagem com preço controlado pelo backend.
 - Débito atômico e seguro para requisições concorrentes.
 - Respostas padronizadas com `ProblemDetails` e `ValidationProblemDetails`.
-- Aplicativo Android via Expo Go com estados de carregamento, sucesso, erro, lista vazia e servidor indisponível.
+- Aplicativo Android via Expo Go ou APK independente, com estados de carregamento, sucesso, erro, lista vazia e servidor indisponível.
 - Proteção mobile contra envios duplicados e sincronização do saldo após consumo.
+- Configuração dinâmica e persistente da URL da API, sem recompilar o APK ao mudar de rede.
 
 ## Tecnologias
 
@@ -22,6 +23,8 @@ Aplicação Full Stack Mobile que simula parte do funcionamento de uma lavanderi
 - React Native 0.88.1
 - Expo SDK 58
 - React 19.3 e TypeScript 6
+- AsyncStorage
+- Vitest
 
 ## Estrutura do repositório
 
@@ -56,6 +59,8 @@ Cicclo/
 - `Cicclo.Tests`: reúne testes unitários, integração HTTP e concorrência.
 - `mobile/src/services`: centraliza URL, requisições e conversão de erros HTTP.
 - `mobile/src/components`: apresenta carteira e serviços sem conter regras de negócio.
+
+A URL ativa segue a prioridade: valor salvo pelo usuário no AsyncStorage, `EXPO_PUBLIC_API_URL` como valor inicial opcional e, por último, nenhuma URL. Sem endereço disponível, o aplicativo abre automaticamente a configuração do servidor e não envia requisições.
 
 `WalletService` é Singleton e mantém a carteira em memória durante a execução da API. Todas as leituras e o débito usam o mesmo objeto `lock` privado. A validação do saldo e sua alteração acontecem dentro de uma única seção crítica, impedindo saldo negativo em consumos simultâneos.
 
@@ -108,7 +113,7 @@ O backend deve permanecer em execução enquanto o aplicativo é utilizado.
    npm install
    ```
 
-2. Copie `.env.example` para `.env` e ajuste a URL:
+2. Opcionalmente, copie `.env.example` para `.env` e defina a URL inicial:
 
    ```env
    EXPO_PUBLIC_API_URL=http://10.0.2.2:5046
@@ -120,7 +125,7 @@ O backend deve permanecer em execução enquanto o aplicativo é utilizado.
    EXPO_PUBLIC_API_URL=http://192.168.x.x:5046
    ```
 
-   Nesse cenário, execute o backend com `--urls "http://0.0.0.0:5046"`. Não use `localhost`, `127.0.0.1` ou `10.0.2.2` no dispositivo físico.
+   Nesse cenário, execute o backend com `--urls "http://0.0.0.0:5046"`. Não use `localhost`, `127.0.0.1` ou `10.0.2.2` no dispositivo físico. O endereço também pode ser informado ou alterado pelo ícone de engrenagem no aplicativo; o `.env` não é obrigatório para o APK.
 
 3. Inicie o Expo:
 
@@ -148,11 +153,34 @@ Comandos adicionais:
 
 ```powershell
 npm run typecheck
+npm test
 npx expo install --check
 npm run doctor
 ```
 
-Não foi gerado APK nesta etapa.
+### Configuração do servidor no aplicativo
+
+O ícone de engrenagem abre a configuração dinâmica. O endereço deve conter `http://` ou `https://`, host e porta válida quando utilizada, sem credenciais, query string, fragmento ou caminho `/api`. O botão **Testar conexão** consulta `/api/services` e valida o formato do catálogo antes de confirmar a conexão. **Salvar** não exige que o servidor esteja online e persiste o endereço no AsyncStorage.
+
+Ao trocar de servidor, saldo, serviços e mensagens anteriores são descartados. Respostas pendentes do endereço anterior são ignoradas. A configuração não pode ser aberta durante um consumo em andamento.
+
+### APK Android
+
+O APK independente do Expo Go foi gerado em:
+
+```text
+mobile/dist/Cicclo-1.0.0.apk
+```
+
+O artefato local é ignorado pelo Git. Ele foi validado no emulador Android, possui assinatura APK v2 de desenvolvimento e é adequado para instalação e avaliação local. Essa assinatura não deve ser utilizada para publicação na Play Store.
+
+Para instalar com ADB:
+
+```powershell
+adb install -r mobile/dist/Cicclo-1.0.0.apk
+```
+
+O Android permite tráfego HTTP nesse APK para demonstração em uma rede local confiável. A validação de certificados HTTPS permanece ativa.
 
 O `npm audit` atualmente reporta três ocorrências moderadas do mesmo problema transitivo em `minimatch`, trazido por `@expo/fingerprint`/Expo. A correção automática com `--force` rebaixa o Expo para o SDK 52 e, por isso, não deve ser aplicada sem uma atualização compatível do ecossistema.
 
@@ -262,6 +290,7 @@ Exemplo de saldo insuficiente:
   ```
 
 - Não fixe o IP da máquina no backend. Configure a URL base no aplicativo mobile conforme o ambiente.
+- O APK armazena a URL escolhida localmente no AsyncStorage e permite alterá-la pelo ícone de engrenagem.
 - O firewall deve permitir conexões de entrada na porta escolhida. Não exponha essa configuração diretamente à internet.
 - Certificados HTTPS locais normalmente não são confiáveis em dispositivos e emuladores. Para HTTPS, instale e confie explicitamente em um certificado de desenvolvimento apropriado; nunca desative globalmente a validação de certificados.
 - React Native nativo e Expo Go não dependem da política CORS do navegador. Por isso, CORS irrestrito não está habilitado. Caso uma versão web seja criada, configure apenas as origens web explícitas necessárias.

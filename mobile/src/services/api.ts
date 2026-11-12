@@ -5,6 +5,7 @@ import type {
   ProblemDetails,
   WalletResponse,
 } from '../types/api';
+import { getActiveApiUrl, normalizeApiUrl } from './apiConfig';
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -26,28 +27,6 @@ export class ApiConnectionError extends Error {
   }
 }
 
-function getApiUrl(): string {
-  const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
-
-  if (!configuredUrl) {
-    throw new Error('EXPO_PUBLIC_API_URL não foi configurada.');
-  }
-
-  let parsedUrl: URL;
-
-  try {
-    parsedUrl = new URL(configuredUrl);
-  } catch {
-    throw new Error('EXPO_PUBLIC_API_URL possui um formato inválido.');
-  }
-
-  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-    throw new Error('EXPO_PUBLIC_API_URL deve utilizar HTTP ou HTTPS.');
-  }
-
-  return configuredUrl.replace(/\/+$/, '');
-}
-
 async function parseProblem(response: Response): Promise<ProblemDetails | undefined> {
   try {
     return (await response.json()) as ProblemDetails;
@@ -56,12 +35,12 @@ async function parseProblem(response: Response): Promise<ProblemDetails | undefi
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, baseUrl = getActiveApiUrl()): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${getApiUrl()}${path}`, {
+    const response = await fetch(`${baseUrl}${path}`, {
       ...init,
       headers: {
         Accept: 'application/json',
@@ -89,6 +68,30 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiConnectionError(timedOut);
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+function isLaundryService(value: unknown): value is LaundryServiceResponse {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const service = value as Partial<LaundryServiceResponse>;
+  return (
+    Number.isInteger(service.id) &&
+    typeof service.name === 'string' &&
+    service.name.length > 0 &&
+    typeof service.price === 'number' &&
+    Number.isFinite(service.price)
+  );
+}
+
+export async function testApiConnection(candidateUrl: string): Promise<void> {
+  const baseUrl = normalizeApiUrl(candidateUrl);
+  const services = await request<unknown>('/api/services', undefined, baseUrl);
+
+  if (!Array.isArray(services) || !services.every(isLaundryService)) {
+    throw new Error('A resposta não corresponde à API Cicclo.');
   }
 }
 
