@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Cicclo",
+    "slug": "cicclo-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.cicclo.mobile"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cicclo.mobile"
+    }
+  }
+}

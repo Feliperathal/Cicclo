@@ -9,7 +9,9 @@ Aplicação Full Stack Mobile que simula parte do funcionamento de uma lavanderi
 - OpenAPI
 - C# com nullable reference types e implicit usings
 - xUnit
-- React Native com Expo e TypeScript (planejado para uma etapa posterior)
+- React Native 0.88.1
+- Expo SDK 58
+- React 19.3 e TypeScript 6
 
 ## Estrutura do repositório
 
@@ -24,15 +26,23 @@ Cicclo/
 │   │   ├── Services/
 │   │   └── Program.cs
 │   └── Cicclo.Tests/
+├── mobile/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── services/
+│   │   ├── types/
+│   │   └── utils/
+│   └── App.tsx
 ├── .gitignore
 └── README.md
 ```
 
-O diretório `mobile/` será criado quando o aplicativo React Native for iniciado.
-
 ## Requisitos
 
 - .NET SDK 10.0 ou superior compatível com `net10.0`.
+- Node.js LTS 22.13 ou superior. O projeto foi validado com Node.js 26.13.0 LTS.
+- npm, instalado junto com o Node.js.
+- Expo Go em um dispositivo ou um emulador Android configurado.
 
 ## Executar o backend
 
@@ -50,6 +60,49 @@ Pelos perfis atuais, a API utiliza `https://localhost:7219` e `http://localhost:
 ```text
 https://localhost:7219/openapi/v1.json
 ```
+
+## Executar o aplicativo mobile
+
+O backend deve permanecer em execução enquanto o aplicativo é utilizado.
+
+1. Instale as dependências:
+
+   ```powershell
+   cd mobile
+   npm install
+   ```
+
+2. Copie `.env.example` para `.env` e ajuste a URL:
+
+   ```env
+   EXPO_PUBLIC_API_URL=http://10.0.2.2:5046
+   ```
+
+3. Inicie o Expo:
+
+   ```powershell
+   npm start
+   ```
+
+4. Abra pelo Expo Go ou pressione `a` para utilizar um emulador Android disponível.
+
+No emulador Android, use normalmente `http://10.0.2.2:5046`. Se a rede local ou o firewall bloquear esse caminho, é possível criar um túnel de desenvolvimento com ADB:
+
+```powershell
+adb reverse tcp:5046 tcp:5046
+```
+
+Nesse caso, configure temporariamente `EXPO_PUBLIC_API_URL=http://127.0.0.1:5046`. O túnel vale somente para o emulador/dispositivo conectado via ADB.
+
+Comandos adicionais:
+
+```powershell
+npm run typecheck
+npx expo install --check
+npx expo-doctor
+```
+
+Não foi gerado APK nesta etapa.
 
 ## Endpoints
 
@@ -140,6 +193,9 @@ Exemplo de saldo insuficiente:
 - A verificação e o débito usam a mesma seção crítica com um objeto `lock` privado. Assim, requisições simultâneas não conseguem debitar além do saldo disponível.
 - Os preços pertencem exclusivamente ao catálogo do backend. O cliente envia apenas o identificador do serviço e não controla o valor cobrado.
 - Os testes priorizam regras monetárias, rejeições sem alteração do saldo, contratos HTTP, isolamento da carteira e concorrência nos níveis de serviço e HTTP.
+- O mobile usa `fetch`, estado nativo do React e uma única tela; não há necessidade de Axios, navegação ou biblioteca global de estado.
+- O saldo retornado pelo backend é a fonte da verdade. O aplicativo nunca calcula o débito localmente.
+- Uma trava síncrona com `useRef` impede POSTs duplicados enquanto um consumo está em andamento.
 
 ## Integração com React Native e Expo
 
@@ -168,3 +224,5 @@ Exemplo de saldo insuficiente:
 - A carteira é armazenada em memória, sem banco de dados, e volta ao saldo inicial quando a API é reiniciada.
 - Não há autenticação e apenas a conta de identificador `1` existe.
 - Não existe persistência de transações; o identificador retornado representa somente o consumo atual.
+- Em caso de perda da resposta do POST, o aplicativo atualiza a carteira, mas não repete automaticamente o consumo. Sem idempotência ou histórico, não é possível confirmar pelo mobile qual transação foi processada.
+- O aplicativo exige acesso de rede ao backend e não possui modo offline.
