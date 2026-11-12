@@ -2,6 +2,8 @@
 
 Aplicação Full Stack Mobile que simula parte do funcionamento de uma lavanderia automatizada. O backend permite consultar a carteira e os serviços disponíveis, além de simular a cobrança e a execução de um serviço. O aplicativo Expo oferece uma tela única para consultar esses dados e solicitar consumos.
 
+**APK Android (v1.0.0):** [acessar a release e baixar o instalador](https://github.com/Feliperathal/Cicclo/releases/tag/v1.0.0). O APK funciona sem Expo Go, mas precisa de acesso ao backend em execução.
+
 ## Funcionalidades implementadas
 
 - Consulta do saldo da conta fixa de identificador `1`.
@@ -85,20 +87,21 @@ A URL ativa segue a prioridade: valor salvo pelo usuário no AsyncStorage, `EXPO
 
 ## Executar o backend
 
-Na raiz do repositório:
+Na raiz do repositório, restaure, compile e execute os testes:
 
 ```powershell
 dotnet restore backend/Cicclo.slnx
 dotnet build backend/Cicclo.slnx --no-restore
 dotnet test backend/Cicclo.slnx --no-build
-dotnet run --project backend/Cicclo.Api
 ```
 
-O comando acima atende acessos feitos no próprio computador e no emulador Android. Para acessar a API pelo Expo Go em um dispositivo físico, mantenha o celular e o computador na mesma rede e inicie o backend aceitando conexões nas interfaces de rede:
+**Execução recomendada para avaliar o APK em um dispositivo Android:**
 
 ```powershell
 dotnet run --project backend/Cicclo.Api --urls "http://0.0.0.0:5046"
 ```
+
+Esse comando permite conexões nas interfaces de rede do computador. Configure o firewall para permitir a porta TCP `5046` somente em redes confiáveis e informe o IP acessível do computador no aplicativo (não use `0.0.0.0` como endereço do servidor no celular). Para desenvolvimento exclusivamente no próprio computador, também é possível executar `dotnet run --project backend/Cicclo.Api` utilizando os perfis locais existentes.
 
 Pelos perfis atuais, a API utiliza `https://localhost:7219` e `http://localhost:5046`. Com o ambiente `Development`, o documento OpenAPI está disponível em:
 
@@ -178,17 +181,23 @@ Ao trocar de servidor, saldo, serviços e mensagens anteriores são descartados.
 
 ### APK Android
 
-O APK independente do Expo Go foi gerado em:
+**Download do APK:** [Cicclo v1.0.0 — GitHub Releases](https://github.com/Feliperathal/Cicclo/releases/tag/v1.0.0). Na seção **Assets** da release, baixe `Cicclo-1.0.0.apk`.
+
+O arquivo gerado localmente fica em:
 
 ```text
 mobile/dist/Cicclo-1.0.0.apk
 ```
 
-O artefato local é ignorado pelo Git. Ele foi validado no emulador Android, possui assinatura APK v2 de desenvolvimento e é adequado para instalação e avaliação local. Essa assinatura não deve ser utilizada para publicação na Play Store.
+O diretório `mobile/dist` é ignorado pelo Git, portanto o APK não acompanha o clone do repositório. Use a release para obtê-lo. O APK foi validado no emulador Android, possui assinatura APK v2 de desenvolvimento e é destinado à avaliação local, não à publicação na Play Store.
 
-Como `mobile/dist` está ignorado pelo Git, o APK não estará presente após um novo clone do repositório. A distribuição pública deverá ser feita por uma GitHub Release `v1.0.0`. O link de download será incluído aqui somente depois que a release for efetivamente publicada.
+**SHA-256 do APK validado:**
 
-Para instalar com ADB:
+```text
+58FEBCDD6E5DDEA7CFE1C0431808C4B8B19221ED79920C27D16FA68F4F4B14BF
+```
+
+Para instalar com ADB, após baixar o arquivo, ajuste o caminho do APK no comando abaixo:
 
 ```powershell
 adb install -r mobile/dist/Cicclo-1.0.0.apk
@@ -196,7 +205,7 @@ adb install -r mobile/dist/Cicclo-1.0.0.apk
 
 #### Instalação sem ADB
 
-1. Baixe o arquivo `Cicclo-1.0.0.apk` pela GitHub Release quando ela estiver disponível.
+1. Acesse a [release v1.0.0](https://github.com/Feliperathal/Cicclo/releases/tag/v1.0.0) e baixe `Cicclo-1.0.0.apk` em **Assets**.
 2. Transfira o arquivo para o dispositivo Android, caso o download tenha sido feito em outro equipamento.
 3. Abra o APK no Android.
 4. Autorize a instalação por essa fonte quando o sistema solicitar.
@@ -210,7 +219,7 @@ Os nomes das opções podem variar conforme a versão e o fabricante do Android.
 2. Descubra o IPv4 local com `ipconfig`.
 3. Inicie o backend com `dotnet run --project backend/Cicclo.Api --urls "http://0.0.0.0:5046"`.
 4. Permita conexões de entrada TCP na porta `5046` no firewall da rede privada, se necessário.
-5. Instale e abra o APK.
+5. Baixe o APK pela [release v1.0.0](https://github.com/Feliperathal/Cicclo/releases/tag/v1.0.0), instale e abra o aplicativo.
 6. Abra a engrenagem de configuração e informe `http://IP_DO_COMPUTADOR:5046`.
 7. Use **Testar conexão** e depois **Salvar**.
 8. Consulte a carteira e utilize os serviços.
